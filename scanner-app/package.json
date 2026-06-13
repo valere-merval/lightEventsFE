@@ -1,0 +1,9 @@
+{
+  "name": "lightevents-scann",
+  "version": "0.1.0",
+  "private": true,
+  "main": "App.tsx",
+  "scripts": { "start": "expo start", "android": "expo start --android", "ios": "expo start --ios" },
+  "dependencies": { "@expo/vector-icons": "latest", "expo": "latest", "expo-barcode-scanner": "latest", "react": "latest", "react-native": "latest" },
+  "devDependencies": { "typescript": "latest" }
+}

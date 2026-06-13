@@ -1,185 +1,94 @@
-
-import { useEffect, useMemo, useState } from 'react'
-import type { FormEvent } from 'react'
-
-type EventItem = {
-  id: number
-  title: string
-  description: string
-  category: string
-  city: string
-  country: string
-  venueName: string
-  organizerName: string
-  startsAt: string
-  endsAt: string
-  capacity: number
-  brandColor: string
-  tickets?: TicketType[]
-}
+import { useEffect, useState } from 'react'
+import type { CSSProperties, FormEvent } from 'react'
 
 type TicketType = { id: number; name: string; kind: string; price: number; currency: string; quantity: number; sold: number }
-type Profile = { id: number; fullName: string; headline: string; company: string; city: string; country: string; lookingFor: string; offering: string; whatsappNumber: string }
-type Summary = { events: number; attendees: number; checkedIn: number; profiles: number; transactions: number; markets: string[] }
-type Match = { profileId: number; fullName: string; headline: string; company: string; score: number; reason: string; whatsappNumber: string }
+type EventItem = { id: number; title: string; description: string; category: string; customCategory?: string; city: string; country: string; venueName: string; organizerName: string; organizerEmail?: string; startsAt: string; endsAt: string; capacity: number; brandColor: string; coverImageUrl?: string; generatedImageUrl?: string; mediaUrls?: string; videoUrl?: string; allowedPaymentMethods?: string; reservationFreeUntil?: string; tickets?: TicketType[] }
+type Account = { id: number; fullName: string; email: string; phone?: string; role: string; verified: boolean; apiToken: string; demoEmailCode?: string; demoPhoneCode?: string }
+type Attendee = { id: number; fullName: string; email: string; phone?: string; status: string; qrCode: string; registeredAt: string; checkedInAt?: string }
+type Destination = { name: string; country: string; category: string; priceFrom: number; image: string }
+type Faq = { q: string; a: string }
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api'
-
-const fallbackEvents: EventItem[] = [
-  {
-    id: 1,
-    title: 'Abidjan Founder Night',
-    description: 'Networking premium pour entrepreneurs, investisseurs et talents tech africains.',
-    category: 'Business', city: 'Abidjan', country: 'Côte d’Ivoire', venueName: 'Plateau Innovation Hub', organizerName: 'LightEvents',
-    startsAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 21).toISOString(), endsAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 21 + 1000 * 60 * 60 * 4).toISOString(), capacity: 250, brandColor: '#ff7a1a',
-    tickets: [{ id: 1, name: 'Early Founder', kind: 'PAID', price: 7500, currency: 'XOF', quantity: 120, sold: 38 }],
-  },
-  {
-    id: 2, title: 'Kinshasa Creator Summit', description: 'Créateurs, marques et sponsors se rencontrent pour bâtir des collaborations.', category: 'Creator economy', city: 'Kinshasa', country: 'RDC', venueName: 'Gombe Business Center', organizerName: 'Mwemba Media', startsAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 35).toISOString(), endsAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 35 + 1000 * 60 * 60 * 5).toISOString(), capacity: 400, brandColor: '#7c3aed', tickets: [{ id: 2, name: 'Standard', kind: 'PAID', price: 12, currency: 'USD', quantity: 300, sold: 91 }]
-  }
-]
-const fallbackProfiles: Profile[] = [
-  { id: 1, fullName: 'Awa Koné', headline: 'Founder fintech', company: 'NimbaPay', city: 'Abidjan', country: 'Côte d’Ivoire', lookingFor: 'investisseurs, partenaires bancaires', offering: 'mobile money, paiement, fintech', whatsappNumber: '+2250700000001' },
-  { id: 2, fullName: 'Marc Diby', headline: 'CTO SaaS', company: 'CloudKite', city: 'Abidjan', country: 'Côte d’Ivoire', lookingFor: 'clients PME, commerciaux', offering: 'SaaS, IA, automatisation', whatsappNumber: '+2250700000002' },
-  { id: 3, fullName: 'Nadia Sow', headline: 'Investisseuse seed', company: 'Baobab Capital', city: 'Dakar', country: 'Sénégal', lookingFor: 'startups B2B, fintech', offering: 'investissement, stratégie, réseau', whatsappNumber: '+221770000003' },
+const platformFee = 4.5
+const categories = ['music', 'business', 'conference', 'dating', 'humour & comedy', 'cinema', 'webinar', 'sport', 'social', 'tourism', 'formation', 'tech', 'food', 'art']
+const fallbackEvents: EventItem[] = [{ id: 1, title: 'Abidjan Founder Night', description: 'Networking premium pour entrepreneurs, investisseurs et talents tech africains.', category: 'business', city: 'Abidjan', country: 'Côte d’Ivoire', venueName: 'Plateau Innovation Hub', organizerName: 'LightEvents', startsAt: new Date(Date.now()+1814400000).toISOString(), endsAt: new Date(Date.now()+1814400000+14400000).toISOString(), capacity: 250, brandColor: '#ff7a1a', coverImageUrl: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1400&q=80', allowedPaymentMethods: 'ORANGE_MONEY,MTN_MONEY,WAVE,STRIPE', tickets: [{ id: 1, name: 'Early Founder', kind: 'PAID', price: 7500, currency: 'XOF', quantity: 120, sold: 38 }] }]
+const fallbackDestinations: Destination[] = [
+  { name: 'Santorini Sunset Experience', country: 'Greece', category: 'tourism', priceFrom: 89, image: 'https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?auto=format&fit=crop&w=1200&q=80' },
+  { name: 'Safari premium Serengeti', country: 'Tanzania', category: 'tourism', priceFrom: 260, image: 'https://images.unsplash.com/photo-1516426122078-c23e76319801?auto=format&fit=crop&w=1200&q=80' },
+  { name: 'Dubai Marina Yacht Night', country: 'UAE', category: 'tourism', priceFrom: 140, image: 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=1200&q=80' },
+  { name: 'Bali Creator Retreat', country: 'Indonesia', category: 'tourism', priceFrom: 120, image: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&w=1200&q=80' },
 ]
 
-async function api<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`)
+async function api<T>(path: string, options?: RequestInit): Promise<T> {
+  const res = await fetch(`${API_URL}${path}`, { headers: { 'Content-Type': 'application/json', ...(options?.headers ?? {}) }, ...options })
   if (!res.ok) throw new Error(await res.text())
   return res.json()
 }
+function useRoute() { const [path, setPath] = useState(location.pathname + location.search); useEffect(() => { const on = () => setPath(location.pathname + location.search); addEventListener('popstate', on); return () => removeEventListener('popstate', on) }, []); return path }
+function go(path: string) { history.pushState(null, '', path); dispatchEvent(new PopStateEvent('popstate')); scrollTo({ top: 0, behavior: 'smooth' }) }
+function money(ticket?: TicketType) { if (!ticket) return 'Gratuit'; return ticket.price === 0 ? 'Gratuit' : `${ticket.price.toLocaleString('fr-FR')} ${ticket.currency}` }
+function date(v: string) { return new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(v)) }
+function regionFromLocale() { const parts = Intl.DateTimeFormat().resolvedOptions().locale.split('-'); return parts[1] ?? '' }
+function parseQuery(path: string) { return new URLSearchParams(path.split('?')[1] ?? '') }
 
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
-}
-
-function App() {
+export default function App() {
+  const route = useRoute()
+  const [account, setAccount] = useState<Account | null>(() => { const raw = localStorage.getItem('le_account'); return raw ? JSON.parse(raw) : null })
   const [events, setEvents] = useState<EventItem[]>(fallbackEvents)
-  const [profiles, setProfiles] = useState<Profile[]>(fallbackProfiles)
-  const [summary, setSummary] = useState<Summary>({ events: 2, attendees: 129, checkedIn: 0, profiles: 3, transactions: 19, markets: ['Côte d’Ivoire', 'Sénégal', 'Cameroun', 'RDC'] })
-  const [selectedProfile, setSelectedProfile] = useState(1)
-  const [matches, setMatches] = useState<Match[]>([])
-  const [backendOnline, setBackendOnline] = useState(false)
-  const [createdMessage, setCreatedMessage] = useState('')
+  const [destinations, setDestinations] = useState<Destination[]>(fallbackDestinations)
+  const [locationLabel, setLocationLabel] = useState(regionFromLocale() ? `Pays détecté: ${regionFromLocale()}` : 'Zone globale')
 
-  useEffect(() => {
-    Promise.allSettled([api<EventItem[]>('/events'), api<Profile[]>('/profiles'), api<Summary>('/dashboard/summary')]).then(([e, p, s]) => {
-      if (e.status === 'fulfilled') { setEvents(e.value); setBackendOnline(true) }
-      if (p.status === 'fulfilled') setProfiles(p.value)
-      if (s.status === 'fulfilled') setSummary(s.value)
-    })
-  }, [])
+  useEffect(() => { api<EventItem[]>(`/events?country=${encodeURIComponent(regionFromLocale())}`).then(v => setEvents(v.length ? v : fallbackEvents)).catch(() => setEvents(fallbackEvents)); api<Destination[]>('/events/destinations').then(setDestinations).catch(() => setDestinations(fallbackDestinations)) }, [])
+  useEffect(() => { if (account) localStorage.setItem('le_account', JSON.stringify(account)); else localStorage.removeItem('le_account') }, [account])
 
-  useEffect(() => {
-    api<Match[]>(`/networking/business-match?profileId=${selectedProfile}`).then(setMatches).catch(() => {
-      const me = profiles.find(p => p.id === selectedProfile)
-      setMatches(profiles.filter(p => p.id !== selectedProfile).map((p, i) => ({ profileId: p.id, fullName: p.fullName, headline: p.headline, company: p.company, score: 93 - i * 14, reason: me ? `Peut aider sur: ${me.lookingFor}` : 'Contact pertinent', whatsappNumber: p.whatsappNumber })))
-    })
-  }, [selectedProfile, profiles])
+  const q = parseQuery(route)
+  const path = route.split('?')[0]
+  let page = <Home events={events} destinations={destinations} locationLabel={locationLabel} setEvents={setEvents} setLocationLabel={setLocationLabel} />
+  if (path === '/events') page = <EventsPage events={events} setEvents={setEvents} category={q.get('category') ?? ''} />
+  if (path.startsWith('/events/')) page = <EventDetails id={Number(path.split('/')[2])} events={events} />
+  if (path === '/create') page = <CreateEvent account={account} setEvents={setEvents} />
+  if (path === '/auth') page = <AuthPage account={account} setAccount={setAccount} />
+  if (path === '/tickets') page = <TicketsPage />
+  if (path === '/organizer') page = <OrganizerPage account={account} />
+  if (path === '/help') page = <HelpPage />
+  if (path === '/docs') page = <DocsPage />
+  if (path === '/plugin') page = <PluginPage />
 
-  const featured = events[0]
-  const countries = useMemo(() => [...new Set(events.map(e => e.country).filter(Boolean))], [events])
-
-  async function createEvent(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    const data = new FormData(e.currentTarget)
-    const payload = {
-      title: data.get('title'), description: data.get('description'), category: data.get('category'), city: data.get('city'), country: data.get('country'), venueName: data.get('venueName'), organizerName: 'Demo Organizer', organizerEmail: 'organizer@lightevents.africa', startsAt: data.get('startsAt'), endsAt: data.get('endsAt'), capacity: Number(data.get('capacity')), brandColor: '#ff7a1a', online: false,
-    }
-    try {
-      const created = await fetch(`${API_URL}/events`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }).then(r => r.json())
-      setEvents([created, ...events])
-      setCreatedMessage('Événement publié avec succès.')
-      e.currentTarget.reset()
-    } catch {
-      setCreatedMessage('Mode démo: connecte le backend pour publier réellement.')
-    }
-  }
-
-  return <main>
-    <nav className="nav">
-      <a className="brand" href="#top" aria-label="LightEvents"><span className="bolt">✦</span><span>LightEvents</span></a>
-      <div className="links"><a href="#events">Événements</a><a href="#organizer">Organisateurs</a><a href="#networking">Networking IA</a><a href="#plugin">Plugin</a></div>
-      <span className={`status ${backendOnline ? 'ok' : ''}`}>{backendOnline ? 'API connectée' : 'Mode preview'}</span>
-    </nav>
-
-    <section id="top" className="hero section">
-      <div className="heroText">
-        <div className="eyebrow">Eventbrite + LinkedIn + WhatsApp + Mobile Money</div>
-        <h1>La plateforme événementielle pensée pour créer du business en Afrique.</h1>
-        <p>Créez des événements premium, vendez des billets Mobile Money, construisez une communauté et déclenchez des rencontres professionnelles pertinentes avant, pendant et après l’événement.</p>
-        <div className="actions"><a className="button primary" href="#organizer">Créer un événement</a><a className="button ghost" href="#networking">Voir le matching IA</a></div>
-        <div className="trust"><span>Orange Money</span><span>MTN MoMo</span><span>Wave</span><span>WhatsApp</span><span>QR offline ready</span></div>
-      </div>
-      <div className="heroCard">
-        <div className="glassHeader"><span>{featured?.category ?? 'Business'}</span><strong>{featured ? formatDate(featured.startsAt) : 'Bientôt'}</strong></div>
-        <h2>{featured?.title}</h2>
-        <p>{featured?.description}</p>
-        <div className="venue">📍 {featured?.venueName}, {featured?.city}</div>
-        <div className="ticketStrip"><div><strong>{featured?.tickets?.[0]?.price ?? 7500}</strong><span>{featured?.tickets?.[0]?.currency ?? 'XOF'}</span></div><button>Acheter</button></div>
-        <div className="qr"><span></span><span></span><span></span><small>QR Ticket</small></div>
-      </div>
-    </section>
-
-    <section className="metrics section">
-      {[['Événements', summary.events], ['Participants', summary.attendees], ['Profils business', summary.profiles], ['Transactions', summary.transactions]].map(([label, value]) => <div className="metric" key={label}><strong>{value}</strong><span>{label}</span></div>)}
-    </section>
-
-    <section id="events" className="section splitTitle">
-      <div><div className="eyebrow">Marketplace</div><h2>Des pages d’événements belles, rapides et orientées conversion.</h2></div>
-      <p>Pensé SEO, partage social, WhatsApp-first, et assez flexible pour concerts, conférences, formations, mariages, clubs et communautés.</p>
-    </section>
-    <section className="eventGrid section compact">
-      {events.map(event => <article className="eventCard" key={event.id} style={{ '--accent': event.brandColor || '#7c3aed' } as React.CSSProperties}>
-        <div className="eventGlow" />
-        <div className="pill">{event.category}</div>
-        <h3>{event.title}</h3>
-        <p>{event.description}</p>
-        <div className="meta"><span>📍 {event.city}, {event.country}</span><span>🗓️ {formatDate(event.startsAt)}</span><span>👥 {event.capacity} places</span></div>
-        <div className="cardFooter"><strong>{event.tickets?.[0] ? `${event.tickets[0].price} ${event.tickets[0].currency}` : 'Gratuit'}</strong><button>Réserver</button></div>
-      </article>)}
-    </section>
-
-    <section id="organizer" className="section organizer">
-      <div className="panel dark">
-        <div className="eyebrow">CRM Organisateur</div>
-        <h2>Tout pour vendre, scanner, suivre et relancer.</h2>
-        <ul className="featureList"><li>Billets gratuits, payants, VIP et sponsors</li><li>QR Code + check-in compatible mode offline</li><li>Segments CRM: prospects, acheteurs, VIP, absents</li><li>Campagnes email, SMS et WhatsApp après l’événement</li><li>Templates marque blanche et domaines personnalisés</li></ul>
-      </div>
-      <form className="panel form" onSubmit={createEvent}>
-        <h3>Créer un événement</h3>
-        <input name="title" placeholder="Nom de l’événement" required />
-        <textarea name="description" placeholder="Description" required />
-        <div className="two"><input name="category" placeholder="Catégorie" /><input name="capacity" type="number" min="1" placeholder="Places" required /></div>
-        <div className="two"><input name="city" placeholder="Ville" /><input name="country" placeholder="Pays" /></div>
-        <input name="venueName" placeholder="Lieu" />
-        <div className="two"><input name="startsAt" type="datetime-local" required /><input name="endsAt" type="datetime-local" required /></div>
-        <button className="button primary" type="submit">Publier</button>
-        {createdMessage && <small className="message">{createdMessage}</small>}
-      </form>
-    </section>
-
-    <section id="networking" className="section networking">
-      <div className="splitTitle"><div><div className="eyebrow">Business Match</div><h2>Le networking ne doit plus être laissé au hasard.</h2></div><p>Les participants indiquent ce qu’ils cherchent et proposent. LightEvents recommande les bons contacts et facilite le rendez-vous ou le message WhatsApp.</p></div>
-      <div className="matchBoard">
-        <div className="profileRail">{profiles.map(p => <button className={selectedProfile === p.id ? 'selected' : ''} onClick={() => setSelectedProfile(p.id)} key={p.id}><strong>{p.fullName}</strong><span>{p.headline}</span></button>)}</div>
-        <div className="matchList">{matches.map(m => <article className="match" key={m.profileId}><div className="score">{m.score}%</div><div><h3>{m.fullName}</h3><p>{m.headline} · {m.company}</p><small>{m.reason}</small></div><a className="whatsapp" href={`https://wa.me/${m.whatsappNumber?.replace(/[^0-9]/g, '')}`} target="_blank">WhatsApp</a></article>)}</div>
-      </div>
-    </section>
-
-    <section className="section payments">
-      <div className="phoneMock"><div className="phoneTop"/><h3>Paiement Mobile Money</h3><p>Envoyez une demande de paiement, confirmez la transaction, générez le billet QR.</p><div className="moneyRow"><span>Wave</span><strong>7 500 XOF</strong></div><button>Confirmer le paiement</button></div>
-      <div><div className="eyebrow">Afrique First</div><h2>Pas seulement Stripe. Mobile Money, SMS et WhatsApp sont au cœur du produit.</h2><p>Architecture prête pour Orange Money, MTN MoMo, Wave, Airtel Money, Moov Money, CinetPay, Flutterwave, Stripe et PayPal.</p><div className="countries">{countries.concat(summary.markets ?? []).slice(0, 8).map(c => <span key={c}>{c}</span>)}</div></div>
-    </section>
-
-    <section id="plugin" className="section plugin">
-      <div><div className="eyebrow">Plateforme ouverte</div><h2>Plugin WordPress, widgets et API pour entrepreneurs.</h2><p>LightEvents peut s’intégrer dans les sites d’écoles, églises, clubs, médias, entrepreneurs et communautés sans déplacer leur audience.</p></div>
-      <div className="codeCard"><code>[lightevents-calendar country="CI"]</code><code>[lightevents-ticket event="123"]</code><code>{`<script src="https://cdn.lightevents.africa/widget.js"></script>`}</code></div>
-    </section>
-
-    <footer className="footer">LightEvents · Built for communities, entrepreneurs and African payments.</footer>
-  </main>
+  return <>
+    <Header account={account} setAccount={setAccount} />
+    {page}
+    <footer className="footer">LightEvents · 4.5% platform fee · Mobile Money + WhatsApp + AI + Networking.</footer>
+  </>
 }
 
-export default App
+function Header({ account, setAccount }: { account: Account | null; setAccount: (a: Account | null) => void }) {
+  return <nav className="nav"><button className="brand" onClick={() => go('/')}><span>✦</span>LightEvents</button><div className="links"><button onClick={() => go('/events')}>Événements</button><button onClick={() => go('/create')}>Publier</button><button onClick={() => go('/organizer')}>Organisateurs</button><button onClick={() => go('/tickets')}>Mes tickets</button><button onClick={() => go('/help')}>Aide</button><button onClick={() => go('/docs')}>Docs API</button></div><div className="authBox">{account ? <><small>{account.verified ? '✅ vérifié' : '⚠️ non vérifié'}</small><button onClick={() => setAccount(null)}>Sortir</button></> : <button onClick={() => go('/auth')}>Connexion</button>}</div></nav>
+}
+
+function Home({ events, destinations, locationLabel, setEvents, setLocationLabel }: { events: EventItem[]; destinations: Destination[]; locationLabel: string; setEvents: (e: EventItem[]) => void; setLocationLabel: (s: string) => void }) {
+  async function useGeo() { navigator.geolocation?.getCurrentPosition(async pos => { setLocationLabel(`Autour de vous · rayon intelligent (${pos.coords.latitude.toFixed(2)}, ${pos.coords.longitude.toFixed(2)})`); try { const v = await api<EventItem[]>('/events'); setEvents(v.length ? v : fallbackEvents) } catch { setEvents(fallbackEvents) } }, () => setLocationLabel('Géolocalisation refusée · affichage pays/voisins')) }
+  async function searchCity(e: FormEvent<HTMLFormElement>) { e.preventDefault(); const city = String(new FormData(e.currentTarget).get('city') ?? ''); setLocationLabel(`Recherche: ${city} + villes/pays voisins si peu de résultats`); try { const v = await api<EventItem[]>(`/events?city=${encodeURIComponent(city)}`); setEvents(v.length ? v : fallbackEvents) } catch { setEvents(fallbackEvents) } }
+  return <main><section className="hero page"><div><div className="eyebrow">Eventbrite + LinkedIn + WhatsApp + Mobile Money</div><h1>Découvrez, réservez et networkez autour des meilleurs événements.</h1><p>La home affiche automatiquement les événements du pays détecté. Vous pouvez chercher une ville précise ou utiliser votre position actuelle. S’il n’y a pas assez de résultats, LightEvents élargit aux zones voisines.</p><form className="search" onSubmit={searchCity}><input name="city" placeholder="Ville: Abidjan, Kinshasa, Paris..." /><button>Rechercher</button><button type="button" onClick={useGeo}>Ma position</button></form><span className="locationTag">{locationLabel}</span></div><FeaturedCard event={events[0]} /></section><section className="categoryRail page">{categories.map(c => <button key={c} onClick={() => go(`/events?category=${encodeURIComponent(c)}`)}>{c}</button>)}</section><SectionTitle eyebrow="Autour de vous" title="Événements recommandés" text="Raccourcis par catégories, ville, pays ou rayon de proximité." /><EventGrid events={events} /><SectionTitle eyebrow="Tourisme & expériences" title="Lieux chics et expériences magnifiques à réserver" text="Des expériences touristiques premium dans plusieurs continents, payables directement sur LightEvents." /><section className="destGrid page">{destinations.map(d => <article key={d.name} style={{ backgroundImage: `linear-gradient(180deg, transparent, rgba(0,0,0,.78)), url(${d.image})` }}><span>{d.country}</span><h3>{d.name}</h3><p>À partir de {d.priceFrom} €</p><button onClick={() => go('/events?category=tourism')}>Réserver</button></article>)}</section><ChatBubble /></main>
+}
+function FeaturedCard({ event }: { event?: EventItem }) { if (!event) return null; return <article className="featured"><img src={event.coverImageUrl || event.generatedImageUrl || fallbackEvents[0].coverImageUrl} /><div><span>{event.category}</span><h2>{event.title}</h2><p>{event.city}, {event.country} · {date(event.startsAt)}</p><button onClick={() => go(`/events/${event.id}`)}>Voir détails</button></div></article> }
+function SectionTitle({ eyebrow, title, text }: { eyebrow: string; title: string; text: string }) { return <section className="sectionTitle page"><div><span className="eyebrow">{eyebrow}</span><h2>{title}</h2></div><p>{text}</p></section> }
+function EventGrid({ events }: { events: EventItem[] }) { return <section className="eventGrid page">{events.map(e => <article className="eventCard" key={e.id} style={{ '--accent': e.brandColor || '#7c3aed' } as CSSProperties}><img src={e.coverImageUrl || e.generatedImageUrl || fallbackEvents[0].coverImageUrl} /><div className="eventBody"><span>{e.category}</span><h3>{e.title}</h3><p>{e.description}</p><small>📍 {e.city}, {e.country} · 🗓️ {date(e.startsAt)}</small><div><strong>{money(e.tickets?.[0])}</strong><button onClick={() => go(`/events/${e.id}`)}>Détails</button></div></div></article>)}</section> }
+function EventsPage({ events, setEvents, category }: { events: EventItem[]; setEvents: (v: EventItem[]) => void; category: string }) { useEffect(() => { api<EventItem[]>(`/events${category ? `?category=${encodeURIComponent(category)}` : ''}`).then(v => setEvents(v.length ? v : fallbackEvents)).catch(() => null) }, [category, setEvents]); return <main><PageHero title={category ? `Catégorie: ${category}` : 'Tous les événements'} text="Filtrez par catégorie, ville et pays. Les résultats peuvent être élargis aux zones voisines." /><section className="categoryRail page">{categories.map(c => <button className={category === c ? 'active' : ''} key={c} onClick={() => go(`/events?category=${encodeURIComponent(c)}`)}>{c}</button>)}</section><EventGrid events={events} /></main> }
+function EventDetails({ id, events }: { id: number; events: EventItem[] }) { const [event, setEvent] = useState<EventItem | undefined>(events.find(e => e.id === id)); const [quantity, setQuantity] = useState(1); const [msg, setMsg] = useState(''); useEffect(() => { api<EventItem>(`/events/${id}`).then(setEvent).catch(() => null) }, [id]); if (!event) return <PageHero title="Événement introuvable" text="L’événement n’existe pas ou n’est plus publié." />; const ticket = event.tickets?.[0]; async function reserve(e: FormEvent<HTMLFormElement>) { e.preventDefault(); const fd = new FormData(e.currentTarget); const holders = Array.from({ length: quantity }).map((_, i) => ({ fullName: String(fd.get(`name_${i}`) || fd.get('buyerName')), email: String(fd.get(`email_${i}`) || fd.get('buyerEmail')), phone: String(fd.get(`phone_${i}`) || fd.get('buyerPhone')), whatsapp: String(fd.get(`whatsapp_${i}`) || fd.get('buyerWhatsapp')) })); try { const r = await api<{ reservation: { reference: string }, attendees: Attendee[] }>(`/events/${id}/reservations`, { method: 'POST', body: JSON.stringify({ buyerName: fd.get('buyerName'), buyerEmail: fd.get('buyerEmail'), buyerPhone: fd.get('buyerPhone'), buyerWhatsapp: fd.get('buyerWhatsapp'), companyPurchase: fd.get('companyPurchase') === 'on', companyName: fd.get('companyName'), ticketTypeId: ticket?.id ?? 1, quantity, holders }) }); setMsg(`Réservation ${r.reservation.reference} créée. ${r.attendees.length} QR tickets générés.`) } catch { setMsg(`Mode preview: réservation préparée pour ${quantity} ticket(s).`) } }
+  return <main><section className="details page"><div><img src={event.coverImageUrl || event.generatedImageUrl || fallbackEvents[0].coverImageUrl} /><div className="mediaStrip">{(event.mediaUrls?.split(',') ?? []).filter(Boolean).map(m => <img src={m} key={m} />)}{event.videoUrl && <video controls src={event.videoUrl} />}</div></div><div><span className="eyebrow">{event.category}</span><h1>{event.title}</h1><p>{event.description}</p><ul><li>📍 {event.venueName}, {event.city}, {event.country}</li><li>🗓️ {date(event.startsAt)}</li><li>💳 Paiements: {event.allowedPaymentMethods || 'Mobile Money, Stripe'}</li><li>⏳ Réservation gratuite jusqu’à: {event.reservationFreeUntil ? date(event.reservationFreeUntil) : 'selon organisateur'}</li></ul><div className="priceBox"><strong>{money(ticket)}</strong><small>LightEvents prélève {platformFee}% puis reverse automatiquement le net à l’organisateur.</small></div></div></section><section className="panel page"><h2>Réserver des tickets</h2><form className="form" onSubmit={reserve}><div className="two"><input name="buyerName" placeholder="Nom acheteur" required /><input name="buyerEmail" type="email" placeholder="Email acheteur" required /></div><div className="two"><input name="buyerPhone" placeholder="Téléphone/SMS" /><input name="buyerWhatsapp" placeholder="WhatsApp" /></div><label><input name="companyPurchase" type="checkbox" /> Acheter en tant qu’entreprise</label><input name="companyName" placeholder="Nom entreprise" /><label>Nombre de tickets <input type="number" min="1" max="20" value={quantity} onChange={e => setQuantity(Number(e.target.value))} /></label>{Array.from({ length: quantity }).map((_, i) => <div className="holder" key={i}><strong>Ticket {i + 1}</strong><div className="two"><input name={`name_${i}`} placeholder="Nom détenteur" /><input name={`email_${i}`} type="email" placeholder="Email détenteur" /></div><div className="two"><input name={`phone_${i}`} placeholder="Téléphone" /><input name={`whatsapp_${i}`} placeholder="WhatsApp" /></div></div>)}<button className="primary">Réserver / Payer</button>{msg && <b>{msg}</b>}</form></section></main> }
+function CreateEvent({ account, setEvents }: { account: Account | null; setEvents: (fn: EventItem[] | ((v: EventItem[]) => EventItem[])) => void }) { const [preview, setPreview] = useState<EventItem>(fallbackEvents[0]); const [msg, setMsg] = useState(''); function update(e: FormEvent<HTMLFormElement>) { const fd = new FormData(e.currentTarget); setPreview(p => ({ ...p, title: String(fd.get('title') || p.title), description: String(fd.get('description') || p.description), category: String(fd.get('customCategory') || fd.get('category') || p.category), city: String(fd.get('city') || p.city), country: String(fd.get('country') || p.country), venueName: String(fd.get('venueName') || p.venueName), coverImageUrl: String(fd.get('coverImageUrl') || p.coverImageUrl), startsAt: String(fd.get('startsAt') || p.startsAt), endsAt: String(fd.get('endsAt') || p.endsAt), capacity: Number(fd.get('capacity') || p.capacity) })) }
+  async function aiImage() { const r = await api<{ imageUrl: string }>('/media/ai-image', { method: 'POST', body: JSON.stringify({ prompt: `${preview.title} ${preview.description}` }) }).catch(() => ({ imageUrl: fallbackEvents[0].coverImageUrl! })); setPreview({ ...preview, coverImageUrl: r.imageUrl }) }
+  async function submit(e: FormEvent<HTMLFormElement>) { e.preventDefault(); if (!account?.verified) { setMsg('Vous devez être connecté et vérifié par email/SMS/WhatsApp avant de publier.'); return } const fd = new FormData(e.currentTarget); const payload = { title: fd.get('title'), description: fd.get('description'), coverImageUrl: fd.get('coverImageUrl') || preview.coverImageUrl, category: fd.get('category'), customCategory: fd.get('customCategory'), city: fd.get('city'), country: fd.get('country'), venueName: fd.get('venueName'), organizerName: account.fullName, organizerEmail: account.email, startsAt: fd.get('startsAt'), endsAt: fd.get('endsAt'), capacity: Number(fd.get('capacity')), brandColor: '#ff7a1a', allowedPaymentMethods: fd.getAll('payments'), publishChannels: fd.getAll('channels'), reservationFreeUntil: fd.get('reservationFreeUntil') || null, mediaUrls: String(fd.get('gallery') || '').split(',').map(s => s.trim()).filter(Boolean), videoUrl: fd.get('videoUrl') }
+    try { const created = await api<EventItem>('/events', { method: 'POST', headers: { 'X-LightEvents-Token': account.apiToken }, body: JSON.stringify(payload) }); setEvents(v => [created, ...v]); setMsg('Événement publié avec succès.') } catch { setMsg('Publication refusée: vérifiez connexion, vérification et backend.') } }
+  return <main><PageHero title="Publier un événement" text="Création protégée: seul un organisateur connecté et vérifié peut publier. Preview en direct, IA image, médias S3, paiements et réseaux." />{!account?.verified && <section className="warning page">Connectez-vous et vérifiez votre email/SMS/WhatsApp avant de publier. <button onClick={() => go('/auth')}>Connexion</button></section>}<section className="creator page"><form className="form panel" onChange={update} onSubmit={submit}><input name="title" placeholder="Titre" required /><textarea name="description" placeholder="Description" required /><div className="two"><select name="category">{categories.map(c => <option key={c}>{c}</option>)}</select><input name="customCategory" placeholder="Autre catégorie" /></div><div className="two"><input name="city" placeholder="Ville" /><input name="country" placeholder="Pays" /></div><input name="venueName" placeholder="Lieu" /><div className="two"><input name="startsAt" type="datetime-local" required /><input name="endsAt" type="datetime-local" required /></div><div className="two"><input name="capacity" type="number" min="1" placeholder="Places" required /><input name="reservationFreeUntil" type="datetime-local" /></div><input name="coverImageUrl" placeholder="URL image uploadée ou générée" /><input name="gallery" placeholder="URLs galerie séparées par virgule (S3 public URLs)" /><input name="videoUrl" placeholder="URL vidéo S3/CDN" /><button type="button" onClick={aiImage}>Générer image IA</button><fieldset><legend>Paiements acceptés</legend>{['ORANGE_MONEY','MTN_MONEY','WAVE','AIRTEL_MONEY','MOOV_MONEY','STRIPE','PAYPAL'].map(p => <label key={p}><input type="checkbox" name="payments" value={p} defaultChecked /> {p}</label>)}</fieldset><fieldset><legend>Publier/promouvoir aussi sur</legend>{['WhatsApp','LinkedIn','Facebook Ads','Instagram Ads','Email campaign'].map(c => <label key={c}><input type="checkbox" name="channels" value={c} /> {c}</label>)}</fieldset><button className="primary">Publier</button>{msg && <b>{msg}</b>}</form><div><h2>Preview</h2><EventGrid events={[preview]} /></div></section></main> }
+function AuthPage({ account, setAccount }: { account: Account | null; setAccount: (a: Account) => void }) { const [created, setCreated] = useState<Account | null>(account); const [msg, setMsg] = useState(''); async function register(e: FormEvent<HTMLFormElement>) { e.preventDefault(); const fd = new FormData(e.currentTarget); const acc = await api<Account>('/auth/register', { method: 'POST', body: JSON.stringify({ fullName: fd.get('fullName'), email: fd.get('email'), phone: fd.get('phone'), whatsappNumber: fd.get('whatsappNumber'), role: fd.get('role'), payoutMethod: fd.get('payoutMethod'), payoutCountry: fd.get('payoutCountry'), payoutAccountName: fd.get('payoutAccountName'), payoutAccountRef: fd.get('payoutAccountRef') }) }); setCreated(acc); setMsg(`Compte créé. Code email démo: ${acc.demoEmailCode}`) }
+  async function verify(e: FormEvent<HTMLFormElement>) { e.preventDefault(); const fd = new FormData(e.currentTarget); const acc = await api<Account>('/auth/verify', { method: 'POST', body: JSON.stringify({ channel: fd.get('channel'), destination: fd.get('destination'), code: fd.get('code') }) }); setAccount(acc); setMsg('Compte vérifié et connecté.') }
+  return <main><PageHero title="Connexion & vérification" text="Aucun événement ne peut être publié sans compte vérifié par email, SMS ou WhatsApp." /><section className="authGrid page"><form className="form panel" onSubmit={register}><h2>Créer compte</h2><input name="fullName" placeholder="Nom complet" required /><input name="email" type="email" placeholder="Email réel" required /><input name="phone" placeholder="Téléphone SMS" /><input name="whatsappNumber" placeholder="WhatsApp" /><select name="role"><option>ORGANIZER</option><option>PARTICIPANT</option></select><select name="payoutMethod"><option>WAVE</option><option>ORANGE_MONEY</option><option>MTN_MONEY</option><option>BANK_TRANSFER</option><option>PAYPAL</option></select><input name="payoutCountry" placeholder="Pays reversement" /><input name="payoutAccountName" placeholder="Nom compte reversement" /><input name="payoutAccountRef" placeholder="IBAN, téléphone Mobile Money, PayPal..." /><button className="primary">Créer</button></form><form className="form panel" onSubmit={verify}><h2>Vérifier</h2><select name="channel"><option>email</option><option>phone</option><option>whatsapp</option></select><input name="destination" placeholder="Email ou téléphone" defaultValue={created?.email ?? ''} required /><input name="code" placeholder="Code reçu" defaultValue={created?.demoEmailCode ?? ''} required /><button className="primary">Vérifier et connecter</button><p>{msg}</p></form></section></main> }
+function TicketsPage() { const [code, setCode] = useState(''); const [tickets, setTickets] = useState<Attendee[]>([]); const [email, setEmail] = useState(''); async function request(e: FormEvent<HTMLFormElement>) { e.preventDefault(); const fd = new FormData(e.currentTarget); const mail = String(fd.get('email')); setEmail(mail); const r = await api<{ code: string }>('/events/tickets/lookup/request-code', { method: 'POST', body: JSON.stringify({ email: mail }) }).catch(() => ({ code: '123456' })); setCode(r.code) } async function verify(e: FormEvent<HTMLFormElement>) { e.preventDefault(); const fd = new FormData(e.currentTarget); const list = await api<Attendee[]>('/events/tickets/lookup/verify', { method: 'POST', body: JSON.stringify({ email, code: fd.get('code') }) }).catch(() => []); setTickets(list) } return <main><PageHero title="Mes tickets" text="Entrez votre email, recevez un code, puis consultez vos tickets valides et périmés." /><section className="authGrid page"><form className="form panel" onSubmit={request}><input name="email" type="email" placeholder="Votre email" required /><button className="primary">Recevoir code</button>{code && <small>Code démo envoyé: {code}</small>}</form><form className="form panel" onSubmit={verify}><input name="code" placeholder="Code" defaultValue={code} /><button>Afficher mes tickets</button></form></section><section className="tickets page">{tickets.map(t => <article key={t.id}><h3>{t.fullName}</h3><p>{t.email}</p><strong>{t.status}</strong><code>{t.qrCode}</code></article>)}</section></main> }
+function OrganizerPage({ account }: { account: Account | null }) { return <main><PageHero title="Espace organisateur" text="CRM, networking automatique, campagnes et reversements." /><section className="featureGrid page">{['Chaque acheteur entre automatiquement dans votre networking', 'Notifications Mail, SMS ou WhatsApp lors de nouveaux événements', 'IA pour descriptions, messages, campagnes et relances', 'Campagnes Facebook, Instagram, WhatsApp, LinkedIn et email', 'Reversement automatique après frais LightEvents 4.5%', 'Export CRM et segmentation VIP, absents, prospects'].map(x => <article key={x}>{x}</article>)}</section><section className="warning page">{account ? `Connecté: ${account.fullName}` : 'Connectez-vous pour accéder aux outils organisateur.'}</section></main> }
+function HelpPage() { const [faqs, setFaqs] = useState<Faq[]>([]); const [answer, setAnswer] = useState(''); useEffect(() => { api<Faq[]>('/support/faq').then(setFaqs).catch(() => setFaqs([{ q: 'Comment contacter LightEvents ?', a: 'Utilisez le chatbot, WhatsApp support ou email support.' }])) }, []); async function chat(e: FormEvent<HTMLFormElement>) { e.preventDefault(); const msg = String(new FormData(e.currentTarget).get('message')); const r = await api<{ answer: string }>('/support/chatbot', { method: 'POST', body: JSON.stringify({ message: msg }) }).catch(() => ({ answer: 'Assistant preview: nous vous redirigeons vers le support ou l’organisateur.' })); setAnswer(r.answer) } return <main><PageHero title="Aide & support" text="FAQ, contact LightEvents, contact organisateur et chatbot connecté WhatsApp." /><section className="authGrid page"><div className="panel"><h2>FAQ</h2>{faqs.map(f => <details key={f.q}><summary>{f.q}</summary><p>{f.a}</p></details>)}</div><form className="form panel" onSubmit={chat}><h2>Chatbot LightEvents</h2><textarea name="message" placeholder="Votre question" /><button className="primary">Envoyer</button><p>{answer}</p><small>Handoff possible vers chatbot organisateur + WhatsApp.</small></form></section></main> }
+function DocsPage() { return <main><PageHero title="Docs API & intégrations" text="Intégrer LightEvents dans HTML/CSS/JS, Angular, React, React Native, Flutter, WordPress, Joomla et autres CMS." /><section className="docs page"><Code title="HTML / JS Widget" code={'<div data-lightevents-calendar data-country="CI"></div>\n<script src="https://cdn.lightevents.africa/widget.js"></script>'} /><Code title="React / Angular / Flutter" code={'GET /api/events?country=CI&category=business\nPOST /api/events/{id}/reservations\nPOST /api/events/check-in'} /><Code title="WordPress" code={'[lightevents-calendar country="CI"]\n[lightevents-ticket event="123"]'} /><Code title="React Native Scanner" code={'POST /api/events/check-in\n{ "qrCode": "ticket-uuid" }'} /></section></main> }
+function PluginPage() { return <main><PageHero title="Plugin LightEvents" text="Plugin prêt à connecter à l’API: événements, calendrier, ticket checkout, tracking et widgets." /><section className="panel page"><h2>Fonctionnement</h2><ol><li>Installer le plugin WordPress/Joomla.</li><li>Configurer l’URL API et la clé organisateur vérifiée.</li><li>Utiliser les shortcodes ou blocs.</li><li>Les paiements, tickets et QR restent gérés par LightEvents.</li></ol><button onClick={() => go('/docs')}>Voir docs API</button></section></main> }
+function PageHero({ title, text }: { title: string; text: string }) { return <section className="pageHero page"><span className="eyebrow">LightEvents</span><h1>{title}</h1><p>{text}</p></section> }
+function Code({ title, code }: { title: string; code: string }) { return <article className="code"><h3>{title}</h3><pre>{code}</pre></article> }
+function ChatBubble() { return <button className="chat" onClick={() => go('/help')}>💬 Assistant IA</button> }
