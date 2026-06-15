@@ -9,7 +9,7 @@ export type OrganizerEvent = { event: EventItem; participants: Attendee[]; reser
 export type TicketHistory = { tickets: Attendee[]; purchases: any[]; invoices: any[] }
 export type Toast = { kind: 'success' | 'error' | 'info'; text: string }
 
-export const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api'
+export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api'
 export const platformFee = 4.5
 export const categories = ['music', 'business', 'conference', 'dating', 'humour & comedy', 'cinema', 'webinar', 'sport', 'social', 'tourism', 'formation', 'tech', 'food', 'art']
 export const countries = [
