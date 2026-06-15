@@ -11,6 +11,7 @@ const fallbackSpots: DestinationSpot[] = [
   { title: 'Retraite tropicale', city: 'Bali', country: 'Indonesia', countryCode: 'ID', imageUrl: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&w=1000&q=80' },
 ]
 function localeCountry(){ return Intl.DateTimeFormat().resolvedOptions().locale.split('-')[1] ?? '' }
+function distanceKm(aLat:number,aLon:number,bLat:number,bLon:number){ const R=6371; const dLat=(bLat-aLat)*Math.PI/180; const dLon=(bLon-aLon)*Math.PI/180; const x=Math.sin(dLat/2)**2+Math.cos(aLat*Math.PI/180)*Math.cos(bLat*Math.PI/180)*Math.sin(dLon/2)**2; return 2*R*Math.asin(Math.sqrt(x)) }
 
 export function HomePage({ events, loading, reload }: { events: EventItem[]; loading: boolean; reload: () => void }) {
   const [spots, setSpots] = useState<DestinationSpot[]>(fallbackSpots)
@@ -18,22 +19,25 @@ export function HomePage({ events, loading, reload }: { events: EventItem[]; loa
   const [selectedPlace, setSelectedPlace] = useState<PlaceSuggestion | null>(null)
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([])
   const [scopeLabel, setScopeLabel] = useState(localeCountry() ? `Pays détecté: ${localeCountry()}` : 'Tous les pays')
+  const [coords, setCoords] = useState<{lat:number; lon:number} | null>(null)
+  const wideRadiusKm = 500
   useEffect(() => { api<DestinationSpot[]>('/destinations').then(v => setSpots(v.length ? v : fallbackSpots)).catch(() => setSpots(fallbackSpots)) }, [])
   async function suggest(value: string){ setQuery(value); setSelectedPlace(null); if(value.trim().length < 2) return setSuggestions([]); setSuggestions(await api<PlaceSuggestion[]>(`/geo/place-suggest?q=${encodeURIComponent(value)}`).catch(() => [])) }
-  function useCurrentLocation(){ navigator.geolocation?.getCurrentPosition(pos => { setScopeLabel(`Autour de vous (${pos.coords.latitude.toFixed(2)}, ${pos.coords.longitude.toFixed(2)})`); setSelectedPlace(null); setQuery('') }, () => setScopeLabel(localeCountry() ? `Pays détecté: ${localeCountry()}` : 'Géolocalisation refusée')) }
+  function useCurrentLocation(){ navigator.geolocation?.getCurrentPosition(pos => { const next={lat:pos.coords.latitude, lon:pos.coords.longitude}; setCoords(next); setScopeLabel(`Autour de vous · rayon large ${wideRadiusKm} km (${next.lat.toFixed(2)}, ${next.lon.toFixed(2)})`); setSelectedPlace(null); setQuery(''); setSuggestions([]) }, () => setScopeLabel(localeCountry() ? `Pays détecté: ${localeCountry()} · géolocalisation refusée` : 'Géolocalisation refusée')) }
   const initialCountry = localeCountry()
   const visibleEvents = useMemo(() => {
+    if (coords) return events.filter(e => (e.latitude && e.longitude && distanceKm(coords.lat, coords.lon, e.latitude, e.longitude) <= wideRadiusKm) || (!e.latitude && !e.longitude && initialCountry && (e.countryCode?.toUpperCase() === initialCountry.toUpperCase() || e.country?.toUpperCase().includes(initialCountry.toUpperCase()))))
     if (selectedPlace) return events.filter(e => (selectedPlace.city && e.city?.toLowerCase().includes(selectedPlace.city.toLowerCase())) || (selectedPlace.country && e.country?.toLowerCase() === selectedPlace.country.toLowerCase()))
     if (query.trim()) { const q=query.toLowerCase(); return events.filter(e => e.city?.toLowerCase().includes(q) || e.country?.toLowerCase().includes(q)) }
     if (initialCountry) return events.filter(e => e.countryCode?.toUpperCase() === initialCountry.toUpperCase() || e.country?.toUpperCase().includes(initialCountry.toUpperCase()))
     return events
-  }, [events, selectedPlace, query, initialCountry])
+  }, [events, coords, selectedPlace, query, initialCountry])
   const physical = visibleEvents.filter(e => !e.online)
   const online = visibleEvents.filter(e => e.online)
   const highlights = visibleEvents.slice(0, 4)
   return <main id="top">
     <section className="homeHero page"><div><div className="eyebrow">LightEvents</div><h1>Trouvez l’événement parfait, en ligne ou près de vous.</h1><p>Par défaut, nous affichons les événements de votre pays ou zone. Vous pouvez aussi chercher une ville ou un pays.</p></div></section>
-    <section className="locationSearch page"><form className="search" onSubmit={e => e.preventDefault()}><input value={query} onChange={e => suggest(e.currentTarget.value)} placeholder="Chercher une ville ou un pays: Paris, Abidjan, Allemagne..." /><button type="button" onClick={() => setSelectedPlace(suggestions[0] ?? null)}>Rechercher</button><button type="button" onClick={useCurrentLocation}>Ma position</button><button type="button" onClick={reload}>{loading ? 'Chargement…' : 'Rafraîchir'}</button></form>{suggestions.length > 0 && <div className="placeSuggestions">{suggestions.map(s => <button key={`${s.label}-${s.latitude}`} onClick={() => { setSelectedPlace(s); setQuery(s.label); setSuggestions([]); setScopeLabel(`Recherche: ${s.label}`) }}>{s.label}</button>)}</div>}<span className="locationTag">{scopeLabel} · {visibleEvents.length} événement(s)</span></section>
+    <section className="locationSearch page"><form className="search" onSubmit={e => e.preventDefault()}><input value={query} onChange={e => suggest(e.currentTarget.value)} placeholder="Chercher une ville ou un pays: Paris, Abidjan, Allemagne..." /><button type="button" onClick={() => setSelectedPlace(suggestions[0] ?? null)}>Rechercher</button><button type="button" onClick={useCurrentLocation}>Ma position</button><button type="button" onClick={reload}>{loading ? 'Chargement…' : 'Rafraîchir'}</button></form>{suggestions.length > 0 && <div className="placeSuggestions">{suggestions.map(s => <button key={`${s.label}-${s.latitude}`} onClick={() => { setCoords(null); setSelectedPlace(s); setQuery(s.label); setSuggestions([]); setScopeLabel(`Recherche: ${s.label}`) }}>{s.label}</button>)}</div>}<span className="locationTag">{scopeLabel} · {visibleEvents.length} événement(s)</span></section>
     <SectionTitle eyebrow="Highlight" title="À la une" text="Un format éditorial large pour présenter les événements importants." />
     <section className="highlightList page">{highlights.length ? highlights.map(e => <HighlightEvent key={e.id} event={e} />) : <article className="panel emptyState">Aucun événement publié dans cette zone pour le moment.</article>}</section>
     <SectionTitle eyebrow="Présentiel" title="Événements avec adresse physique" text="Cartes classiques avec lieux, villes et détails pratiques." />
