@@ -28,3 +28,10 @@ npm run dev
 ```
 
 The app gracefully falls back to demo data if the backend is offline.
+
+## UX production updates
+
+- After publishing an event, organizers are redirected directly to the new event detail page.
+- The home page shows exactly two randomized highlight events on the same horizontal row, prioritizing events from the visitor's detected country/zone when possible.
+- Organizer dashboard cards include a participant CSV download button.
+- The advanced module hub now sends real backend payloads with the selected event id instead of acting as a test-only UI.

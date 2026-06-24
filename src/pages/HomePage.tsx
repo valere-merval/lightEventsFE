@@ -34,11 +34,12 @@ export function HomePage({ events, loading, reload }: { events: EventItem[]; loa
   }, [events, coords, selectedPlace, query, initialCountry])
   const physical = visibleEvents.filter(e => !e.online)
   const online = visibleEvents.filter(e => e.online)
-  const highlights = visibleEvents.slice(0, 4)
+  const [highlightSeed] = useState(() => Math.random())
+  const highlights = useMemo(() => [...visibleEvents].sort((a, b) => { const aw = a.countryCode?.toUpperCase() === initialCountry.toUpperCase() ? -1 : 0; const bw = b.countryCode?.toUpperCase() === initialCountry.toUpperCase() ? -1 : 0; if (aw !== bw) return aw - bw; return Math.sin((a.id + highlightSeed) * 9999) - Math.sin((b.id + highlightSeed) * 9999) }).slice(0, 2), [visibleEvents, initialCountry, highlightSeed])
   return <main id="top">
     <section className="homeHero page"><div><div className="eyebrow">LightEvents</div><h1>Trouvez l’événement parfait, en ligne ou près de vous.</h1><p>Par défaut, nous affichons les événements de votre pays ou zone. Vous pouvez aussi chercher une ville ou un pays.</p></div></section>
     <section className="locationSearch page"><form className="search homeSearch" onSubmit={e => e.preventDefault()}><div className="searchInputWrap"><input value={query} onChange={e => suggest(e.currentTarget.value)} placeholder="Chercher une ville ou un pays: Paris, Abidjan, Allemagne..." /><button className="geoIcon" type="button" title="Utiliser ma position" onClick={useCurrentLocation}>⌖</button></div><button type="button" onClick={() => { const first = suggestions[0]; if(first){ setSelectedPlace(first); setQuery(first.label); setScopeLabel(`Recherche: ${first.label}`); setSuggestions([]) } }}>Rechercher</button><button type="button" onClick={reload}>{loading ? 'Chargement…' : 'Rafraîchir'}</button></form>{suggestions.length > 0 && <div className="placeSuggestions">{suggestions.map(s => <button key={`${s.label}-${s.latitude}`} onClick={() => { setCoords(null); setSelectedPlace(s); setQuery(s.label); setSuggestions([]); setScopeLabel(`Résultats de recherche: ${s.label}`) }}>{s.label}</button>)}</div>}<span className="locationTag">{scopeLabel} · {visibleEvents.length} événement(s)</span></section>
-    <SectionTitle eyebrow="Highlight" title="À la une" text="Un format éditorial large pour présenter les événements importants." />
+    <SectionTitle eyebrow="Highlight" title="À la une" text="Deux événements proches de votre pays, tirés de manière aléatoire à chaque ouverture." />
     <section className="highlightList page">{highlights.length ? highlights.map(e => <HighlightEvent key={e.id} event={e} />) : <article className="panel emptyState">Aucun événement publié dans cette zone pour le moment.</article>}</section>
     <SectionTitle eyebrow="Présentiel" title="Événements avec adresse physique" text="Cartes classiques avec lieux, villes et détails pratiques." />
     <EventGrid events={physical} />
