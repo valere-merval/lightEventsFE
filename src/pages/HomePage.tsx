@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { api, date, eventPlace, go, money, SectionTitle, EventGrid } from '../shared'
+import { api, date, eventPlace, go, ticketPriceSummary, SectionTitle, EventGrid } from '../shared'
 import type { EventItem } from '../shared'
 
 type DestinationSpot = { id?: number; title: string; city: string; country: string; countryCode?: string; imageUrl: string }
@@ -50,5 +50,5 @@ export function HomePage({ events, loading, reload }: { events: EventItem[]; loa
 }
 function HighlightEvent({ event }: { event: EventItem }) {
   const d = new Date(event.startsAt)
-  return <article className="highlightCard"><div className="highlightImage"><img src={event.coverImageUrl || event.generatedImageUrl || '/favicon.svg'} /><div className="dateBadge"><b>{d.getDate()}</b><span>{d.toLocaleString('fr-FR', { month: 'short' })}</span></div></div><div className="highlightBody"><span className="highlightLabel">Highlight</span><h2>{event.title}</h2><p>{event.description}</p><div className="highlightMeta"><small>DATUM</small><b>{date(event.startsAt)}</b><span>{eventPlace(event)}</span></div><div className="highlightActions"><strong>{money(event.tickets?.[0])}</strong><button onClick={() => go(`/events/${event.id}`)}>Tickets sichern →</button></div></div></article>
+  return <article className="highlightCard"><div className="highlightImage"><img src={event.coverImageUrl || event.generatedImageUrl || '/favicon.svg'} /><div className="dateBadge"><b>{d.getDate()}</b><span>{d.toLocaleString('fr-FR', { month: 'short' })}</span></div></div><div className="highlightBody"><span className="highlightLabel">Highlight</span><h2>{event.title}</h2><p>{event.description}</p><div className="highlightMeta"><small>DATUM</small><b>{date(event.startsAt)}</b><span>{eventPlace(event)}</span></div><div className="highlightActions"><strong>{ticketPriceSummary(event.tickets)}</strong><button onClick={() => go(`/events/${event.id}`)}>Tickets sichern →</button></div></div></article>
 }

@@ -9,9 +9,9 @@ Voir la documentation fonctionnelle centrale dans le backend : `lightEventsBA/do
 ## Implemented pages
 
 - `/` home with country/geo/city discovery and category shortcuts
-- `/events` event listing and category filters
-- `/events/:id` detail page with reservation and multi-ticket holder forms
-- `/create` verified-organizer event creation with preview, AI image placeholder, media URLs, payment methods and promotion channels
+- `/events` event listing and category filters, including events attached to multiple categories
+- `/events/:id` detail page with all ticket option prices, reservation, payment and multi-ticket holder forms
+- `/create` verified-organizer event creation with multi-category selection, preview, AI image placeholder, media URLs, payment methods and promotion channels
 - `/auth` account creation, verification and payout preference setup
 - `/tickets` email-code ticket lookup
 - `/organizer` organizer dashboard with EventOps modules: box-office, seating, promos, waitlist, refunds, team, custom forms, marketing and webhooks
