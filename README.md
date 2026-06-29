@@ -19,6 +19,14 @@ Voir la documentation fonctionnelle centrale dans le backend : `lightEventsBA/do
 - `/docs` API/CMS integration docs
 - `/plugin` WordPress/Joomla plugin overview
 
+## Production API
+
+GitHub Pages is built with:
+
+```txt
+VITE_API_URL=https://lighteventstest.onrender.com/api
+```
+
 ## Run
 
 ```bash
