@@ -3,7 +3,7 @@ import type { FormEvent } from 'react'
 import { api, CountrySelect, go, PageHero, PhoneField, phone } from '../shared'
 import type { Account, Toast } from '../shared'
 
-type LoginStartResponse = { email: string; message: string }
+type LoginStartResponse = { email: string; message: string; codePreview?: string }
 
 export function AuthPage({
   account,
@@ -37,7 +37,7 @@ export function AuthPage({
         }),
       })
       setVerificationEmail(acc.email)
-      notify('success', 'Compte créé. Un code de vérification a été envoyé par email.')
+      notify(acc.codePreview ? 'info' : 'success', acc.codePreview ? `Compte créé. Email indisponible pour le moment — code de test: ${acc.codePreview}` : (acc.message || 'Compte créé. Un code de vérification a été envoyé par email.'))
     } catch (e: any) {
       notify('error', `Création échouée: ${e.message}`)
     }
@@ -70,7 +70,7 @@ export function AuthPage({
       })
       setLoginEmail(res.email)
       setLoginCodeSent(true)
-      notify('success', 'Code de connexion envoyé par email.')
+      notify(res.codePreview ? 'info' : 'success', res.codePreview ? `Email indisponible pour le moment — code de test: ${res.codePreview}` : (res.message || 'Code de connexion envoyé par email.'))
     } catch (e: any) {
       setLoginCodeSent(false)
       notify('error', `Connexion échouée: ${e.message}`)
